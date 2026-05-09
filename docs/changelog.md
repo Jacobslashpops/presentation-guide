@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-05-10 00:15
+
+### Added
+- [src/lib/actions.ts] 创建 Server Actions，包含客户/项目/红人/币种的 CRUD 操作
+- [src/app/page.tsx] 创建根路由重定向到 /dashboard
+- [src/app/(dashboard)/clients/page.tsx] 客户列表页，支持查看所有客户
+- [src/app/(dashboard)/clients/client-form.tsx] 客户表单组件，支持新建/编辑/删除（Dialog 弹窗）
+- [src/app/(dashboard)/projects/page.tsx] 项目列表页，显示客户关联和状态
+- [src/app/(dashboard)/projects/project-form.tsx] 项目表单组件，支持客户选择、状态、日期、预算和币种
+- [src/app/(dashboard)/influencers/page.tsx] 红人列表页，显示状态和时区
+- [src/app/(dashboard)/influencers/influencer-form.tsx] 红人表单组件，支持新建/编辑/删除
+- [src/app/(dashboard)/admin/currencies/page.tsx] 币种管理页（Super Admin）
+- [src/app/(dashboard)/admin/currencies/currency-form.tsx] 币种表单组件，支持启用/禁用/默认设置
+- [src/components/ui/checkbox.tsx] 添加 shadcn checkbox 组件
+- [src/components/ui/sonner.tsx] 添加 shadcn sonner 组件
+- [src/components/ui/textarea.tsx] 添加 shadcn textarea 组件
+- [src/components/ui/select.tsx] 添加 shadcn select 组件
+- [.env.local] 配置 Supabase 连接信息（URL + Anon Key + Service Role Key）
+
+### Fixed
+- [src/lib/actions.ts] 修复 `createClient` 命名冲突，重命名导入为 `createServerClient`
+- [src/app/(dashboard)/{clients,projects,influencers,admin/currencies}/*/form.tsx] 移除 DialogTrigger 的 `asChild` 属性（base-ui 不支持）
+- [src/app/page.tsx] 创建根路由重定向，修复 Next.js 类型检查报错
+
+### Database
+- [supabase/migrations/00000000000000_initial_schema.sql] 已推送到远程数据库
+- 9 种默认币种种子数据已写入（USD, EUR, GBP, SGD, CNY, JPY, AUD, CAD, HKD）
+
+### Project
+- Phase 2 核心数据 CRUD 完成
+- Supabase 项目已链接并推送迁移
+- 客户/项目/红人/币种四个模块可完整 CRUD 操作
+
+---
+
 ## 2026-05-09 23:45
 
 ### Added
