@@ -1,16 +1,50 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { InvoiceActions } from './invoice-actions'
-import Link from 'next/link'
+import { InvoiceCreateButton } from './invoice-create-button'
 
-export default async function InvoicesPage() {
+export default async function InfluencerInvoicesPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  const { data: influencer } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq('email', user.email)
+    .single()
+
+  if (!influencer) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight">我的 Invoice</h1>
+        <p className="text-muted-foreground">请先完成红人档案设置</p>
+      </div>
+    )
+  }
+
   const { data: invoices } = await supabase
     .from('invoices')
-    .select('*, collaboration:collaborations(title, project:projects(name)), company:companies(name), currency:currencies(code), influencer:influencers(display_name)')
+    .select('*, collaboration:collaborations(title), company:companies(name), currency:currencies(code)')
+    .eq('submitted_by', influencer.id)
     .order('created_at', { ascending: false })
+
+  const { data: collaborations } = await supabase
+    .from('collaborations')
+    .select('id, title, currency_id')
+    .eq('influencer_id', influencer.id)
+
+  const { data: companies } = await supabase
+    .from('companies')
+    .select('id, name')
+    .eq('owner_id', influencer.id)
+
+  const { data: currencies } = await supabase
+    .from('currencies')
+    .select('id, code, name')
 
   const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     draft: { label: '草稿', variant: 'secondary' },
@@ -26,9 +60,16 @@ export default async function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Invoice 管理</h1>
-        <p className="text-muted-foreground">审批和管理 Invoice</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">我的 Invoice</h1>
+          <p className="text-muted-foreground">管理提交的 Invoice</p>
+        </div>
+        <InvoiceCreateButton
+          collaborations={collaborations || []}
+          companies={companies || []}
+          currencies={currencies || []}
+        />
       </div>
 
       <Card>
@@ -42,26 +83,21 @@ export default async function InvoicesPage() {
               <TableRow>
                 <TableHead>编号</TableHead>
                 <TableHead>合作</TableHead>
-                <TableHead>红人</TableHead>
                 <TableHead>金额</TableHead>
                 <TableHead>来源</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>提交时间</TableHead>
-                <TableHead className="w-[120px]">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invoices?.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-medium">
-                    <Link href={`/invoices/${invoice.id}`} className="hover:underline">
-                      {invoice.invoice_number || invoice.id.slice(0, 8)}
-                    </Link>
+                    {invoice.invoice_number || invoice.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {(invoice.collaboration as any)?.title || '独立 Invoice'}
                   </TableCell>
-                  <TableCell>{(invoice.influencer as any)?.display_name || '-'}</TableCell>
                   <TableCell>
                     {(invoice as any).currency?.code} {invoice.amount?.toLocaleString()}
                   </TableCell>
@@ -76,19 +112,14 @@ export default async function InvoicesPage() {
                   <TableCell className="text-muted-foreground text-sm">
                     {invoice.submitted_at
                       ? new Date(invoice.submitted_at).toLocaleDateString('zh-CN')
-                      : new Date(invoice.created_at).toLocaleDateString('zh-CN')}
-                  </TableCell>
-                  <TableCell>
-                    {invoice.status === 'submitted' && (
-                      <InvoiceActions invoiceId={invoice.id} />
-                    )}
+                      : '-'}
                   </TableCell>
                 </TableRow>
               ))}
               {(!invoices || invoices.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    暂无 Invoice
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    暂无 Invoice，点击右上角创建
                   </TableCell>
                 </TableRow>
               )}

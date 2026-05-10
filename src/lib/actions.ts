@@ -284,3 +284,131 @@ export async function confirmDeliverables(collaborationId: string) {
   revalidatePath('/collaborations')
   revalidatePath(`/collaborations/${collaborationId}`)
 }
+
+// ===== Companies =====
+export async function createCompany(formData: FormData) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Get influencer ID from current user email
+  const { data: influencer } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq('email', user?.email)
+    .single()
+
+  if (!influencer) throw new Error('Influencer profile not found')
+
+  const { error } = await supabase.from('companies').insert({
+    owner_id: influencer.id,
+    name: formData.get('name') as string,
+    email: formData.get('email') as string || null,
+    address: formData.get('address') as string || null,
+    tax_id: formData.get('tax_id') as string || null,
+    country: formData.get('country') as string,
+  })
+
+  if (error) throw error
+  revalidatePath('/i/companies')
+}
+
+export async function updateCompany(id: string, formData: FormData) {
+  const supabase = await createServerClient()
+
+  const { error } = await supabase.from('companies').update({
+    name: formData.get('name') as string,
+    email: formData.get('email') as string || null,
+    address: formData.get('address') as string || null,
+    tax_id: formData.get('tax_id') as string || null,
+    country: formData.get('country') as string,
+  }).eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/i/companies')
+}
+
+export async function deleteCompany(id: string) {
+  const supabase = await createServerClient()
+  const { error } = await supabase.from('companies').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/i/companies')
+}
+
+// ===== Invoices =====
+export async function createInvoice(formData: FormData) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Get influencer ID from current user email
+  const { data: influencer } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq('email', user?.email)
+    .single()
+
+  const collaborationId = formData.get('collaboration_id') as string || null
+  const sourceType = formData.get('source_type') as 'uploaded' | 'generated'
+
+  const { data: invoice, error } = await supabase.from('invoices').insert({
+    collaboration_id: collaborationId,
+    company_id: formData.get('company_id') as string || null,
+    amount: parseFloat(formData.get('amount') as string),
+    currency_id: formData.get('currency_id') as string,
+    source_type: sourceType,
+    invoice_number: formData.get('invoice_number') as string || null,
+    invoice_date: formData.get('invoice_date') as string || null,
+    due_date: formData.get('due_date') as string || null,
+    notes: formData.get('notes') as string || null,
+    submitted_by: influencer?.id || null,
+    status: 'submitted',
+  }).select().single()
+
+  if (error) throw error
+
+  // Insert invoice items if generated
+  if (sourceType === 'generated') {
+    const items = JSON.parse(formData.get('items') as string || '[]')
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from('invoice_items').insert(
+        items.map((item: any) => ({
+          invoice_id: invoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.amount,
+        }))
+      )
+      if (itemsError) throw itemsError
+    }
+  }
+
+  revalidatePath('/i/invoices')
+  revalidatePath('/invoices')
+}
+
+export async function approveInvoice(id: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase.from('invoices').update({
+    status: 'approved',
+    approved_by: user?.id,
+    approved_at: new Date().toISOString(),
+  }).eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/invoices')
+  revalidatePath(`/invoices/${id}`)
+}
+
+export async function rejectInvoice(id: string) {
+  const supabase = await createServerClient()
+
+  const { error } = await supabase.from('invoices').update({
+    status: 'rejected',
+  }).eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/invoices')
+  revalidatePath(`/invoices/${id}`)
+}

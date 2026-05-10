@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-05-10 00:45
+
+### Added
+- [src/lib/actions.ts] 新增 Company 和 Invoice 的 CRUD Server Actions（createCompany, updateCompany, deleteCompany, createInvoice, approveInvoice, rejectInvoice）
+- [src/app/(dashboard)/invoices/page.tsx] 运营端 Invoice 列表页，显示编号/合作/红人/金额/来源/状态/提交时间
+- [src/app/(dashboard)/invoices/invoice-actions.tsx] Invoice 审批操作组件，支持批准和拒绝
+- [src/app/(influencer)/i/companies/page.tsx] 红人端付款方列表页，显示名称/国家/邮箱/税号
+- [src/app/(influencer)/i/companies/company-form.tsx] 付款方表单组件，支持新建/编辑/删除
+- [src/app/(influencer)/i/invoices/page.tsx] 红人端 Invoice 列表页，显示自己的 Invoice 状态
+- [src/app/(influencer)/i/invoices/invoice-create-button.tsx] Invoice 创建入口，支持选择"上传"或"生成"两种来源
+- [src/app/(influencer)/i/invoices/invoice-form.tsx] Invoice 表单组件，支持关联合作/选择付款方/币种/日期/备注，生成模式下可添加明细项并自动计算总额
+
+### Fixed
+- [src/components/ui/select.tsx] 修复 base-ui Select 与 React state setter 的类型兼容性问题，改用非受控方式
+
+### Project
+- Phase 5 Invoice 系统完成
+- 红人可创建独立 Invoice（不关联合作）或合作相关 Invoice
+- 支持上传和生成两种来源（PDF API 预留，待接入）
+- 运营端可审批 Invoice（批准/拒绝）
+- 红人可管理自己的付款方 Companies（可复用）
+
+---
+
 ## 2026-05-10 00:25
 
 ### Added
