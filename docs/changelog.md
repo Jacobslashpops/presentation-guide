@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-10 00:25
+
+### Added
+- [src/lib/actions.ts] 新增 Collaboration 和 Deliverable 的 CRUD Server Actions
+- [src/app/(dashboard)/collaborations/page.tsx] 合作列表页，显示项目/红人/价格/状态/交付确认
+- [src/app/(dashboard)/collaborations/collaboration-form.tsx] 合作表单组件，支持项目/红人选择、价格、币种、状态
+- [src/app/(dashboard)/collaborations/[id]/page.tsx] 合作详情页，显示项目路径、红人信息、价格卡片、交付确认状态
+- [src/app/(dashboard)/collaborations/[id]/deliverable-form.tsx] 交付物表单组件，支持新建/编辑/删除
+- [src/app/(dashboard)/collaborations/[id]/confirm-button.tsx] 交付确认按钮组件，一键标记所有交付物已完成
+- [supabase/migrations/00000000000001_seed_admin_user.sql] 种子数据：插入测试 admin 用户到 public.users
+
+### Database
+- [supabase/migrations/00000000000001_seed_admin_user.sql] 已推送到远程数据库
+- 测试用户 `admin@admin.com` (UUID: 1d8fdc1f-f7ca-4329-8baf-17b48f4a4c79) 已同步到 public.users，role=super_admin
+
+### Project
+- Phase 3 合作与交付物管理完成
+- 合作 CRUD + 详情页 + 交付物管理完整可用
+- 交付确认功能就绪（确认后不可撤销）
+
+---
+
 ## 2026-05-10 00:15
 
 ### Added

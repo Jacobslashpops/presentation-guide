@@ -186,3 +186,101 @@ export async function deleteCurrency(id: string) {
   if (error) throw error
   revalidatePath('/admin/currencies')
 }
+
+// ===== Collaborations =====
+export async function createCollaboration(formData: FormData) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase.from('collaborations').insert({
+    project_id: formData.get('project_id') as string,
+    influencer_id: formData.get('influencer_id') as string,
+    title: formData.get('title') as string,
+    description: formData.get('description') as string || null,
+    total_amount: parseFloat(formData.get('total_amount') as string),
+    currency_id: formData.get('currency_id') as string,
+    status: formData.get('status') as string || 'active',
+    created_by: user?.id,
+  })
+
+  if (error) throw error
+  revalidatePath('/collaborations')
+  revalidatePath(`/projects/${formData.get('project_id')}`)
+}
+
+export async function updateCollaboration(id: string, formData: FormData) {
+  const supabase = await createServerClient()
+
+  const { error } = await supabase.from('collaborations').update({
+    project_id: formData.get('project_id') as string,
+    influencer_id: formData.get('influencer_id') as string,
+    title: formData.get('title') as string,
+    description: formData.get('description') as string || null,
+    total_amount: parseFloat(formData.get('total_amount') as string),
+    currency_id: formData.get('currency_id') as string,
+    status: formData.get('status') as string,
+    deliverables_confirmed: formData.get('deliverables_confirmed') === 'true',
+  }).eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/collaborations')
+  revalidatePath(`/projects/${formData.get('project_id')}`)
+}
+
+export async function deleteCollaboration(id: string) {
+  const supabase = await createServerClient()
+  const { error } = await supabase.from('collaborations').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/collaborations')
+}
+
+// ===== Deliverables =====
+export async function createDeliverable(formData: FormData) {
+  const supabase = await createServerClient()
+
+  const { error } = await supabase.from('deliverables').insert({
+    collaboration_id: formData.get('collaboration_id') as string,
+    title: formData.get('title') as string,
+    description: formData.get('description') as string || null,
+    due_date: formData.get('due_date') as string || null,
+  })
+
+  if (error) throw error
+  revalidatePath(`/collaborations/${formData.get('collaboration_id')}`)
+}
+
+export async function updateDeliverable(id: string, formData: FormData) {
+  const supabase = await createServerClient()
+
+  const { error } = await supabase.from('deliverables').update({
+    title: formData.get('title') as string,
+    description: formData.get('description') as string || null,
+    due_date: formData.get('due_date') as string || null,
+    status: formData.get('status') as string,
+  }).eq('id', id)
+
+  if (error) throw error
+  revalidatePath(`/collaborations/${formData.get('collaboration_id')}`)
+}
+
+export async function deleteDeliverable(id: string, collaborationId: string) {
+  const supabase = await createServerClient()
+  const { error } = await supabase.from('deliverables').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath(`/collaborations/${collaborationId}`)
+}
+
+export async function confirmDeliverables(collaborationId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase.from('collaborations').update({
+    deliverables_confirmed: true,
+    deliverables_confirmed_by: user?.id,
+    deliverables_confirmed_at: new Date().toISOString(),
+  }).eq('id', collaborationId)
+
+  if (error) throw error
+  revalidatePath('/collaborations')
+  revalidatePath(`/collaborations/${collaborationId}`)
+}
