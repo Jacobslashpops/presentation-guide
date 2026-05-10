@@ -6,8 +6,14 @@ export default async function InfluencerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (e) {
+    console.error('Auth check failed:', e)
+  }
 
   if (!user) {
     redirect('/login')
@@ -15,13 +21,13 @@ export default async function InfluencerLayout({
 
   return (
     <div className="flex min-h-screen">
-      {/* TODO: Influencer Sidebar */}
       <div className="w-64 border-r bg-muted/40 p-4">
         <div className="font-semibold text-lg mb-4">CelePulse</div>
         <nav className="space-y-2">
           <a href="/i/dashboard" className="block px-3 py-2 rounded-md hover:bg-accent">仪表盘</a>
           <a href="/i/collaborations" className="block px-3 py-2 rounded-md hover:bg-accent">我的合作</a>
           <a href="/i/invoices" className="block px-3 py-2 rounded-md hover:bg-accent">Invoice</a>
+          <a href="/i/companies" className="block px-3 py-2 rounded-md hover:bg-accent">付款方</a>
           <a href="/i/bank-accounts" className="block px-3 py-2 rounded-md hover:bg-accent">银行账户</a>
         </nav>
       </div>
