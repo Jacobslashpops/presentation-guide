@@ -778,6 +778,70 @@ vercel`}</code>
     ),
     bgColor: "bg-white",
   },
+  {
+    id: "homework",
+    title: "Submit Your Work",
+    content: (
+      <div className="space-y-6 text-left max-w-3xl mx-auto">
+        <p className="text-lg text-gray-600 text-center">
+          Done? Package your entire project folder and upload it.
+        </p>
+
+        <div className="bg-white rounded-xl border-2 border-gray-200 p-6 space-y-4">
+          <h3 className="font-bold text-lg">How to Package Your Project</h3>
+          <p className="text-gray-600">
+            A Next.js project has many files. You must zip the <strong>entire folder</strong>, not just one file.
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">1</span>
+              <div>
+                <p className="font-medium">Find your project folder</p>
+                <p className="text-gray-500 text-sm">It should be named <code className="bg-gray-200 px-1 rounded">my-presentation</code> (or whatever you named it)</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">2</span>
+              <div>
+                <p className="font-medium">Compress the entire folder</p>
+                <p className="text-gray-500 text-sm">
+                  <strong>Mac:</strong> Right-click the folder → "Compress"<br/>
+                  <strong>Windows:</strong> Right-click the folder → "Send to" → "Compressed (zipped) folder"
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">3</span>
+              <div>
+                <p className="font-medium">Upload the .zip file</p>
+                <p className="text-gray-500 text-sm">Drop it into the link below. No account needed.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+            <p className="text-red-700 font-medium text-sm">
+              Do NOT just copy page.tsx or index.html. Your project needs node_modules, package.json, and all config files to run.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <a
+            href="https://tinyurl.com/ee09876"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-500 transition-colors shadow-lg"
+          >
+            Upload to Dropbox →
+          </a>
+          <p className="text-gray-500 text-sm mt-3">Anyone with the link can upload. No sign-in required.</p>
+        </div>
+      </div>
+    ),
+    bgColor: "bg-gradient-to-br from-pink-50 to-rose-100",
+  },
 ];
 
 export default function Home() {
