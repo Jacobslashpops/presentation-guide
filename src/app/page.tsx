@@ -534,6 +534,53 @@ const steps = [
     bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
   },
   {
+    id: "mindset",
+    title: "The Vibe Coding Mindset",
+    content: (
+      <div className="space-y-6 text-left max-w-3xl mx-auto">
+        <p className="text-lg text-gray-600 text-center">
+          Know your final goal. Never lose sight of it.
+        </p>
+        <div className="bg-white rounded-xl border-2 border-gray-200 p-6 space-y-4">
+          <div className="flex items-start gap-4">
+            <span className="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">1</span>
+            <div>
+              <h3 className="font-bold text-lg">Define Your Final Goal</h3>
+              <p className="text-gray-600">Be crystal clear about what you want. "A 5-slide presentation website about climate change with scroll-snap navigation."</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <span className="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">2</span>
+            <div>
+              <h3 className="font-bold text-lg">State It, Then Restate It</h3>
+              <p className="text-gray-600">Tell AI your goal upfront. If the conversation drifts, bring it back: "Remember, my goal is to build a presentation website."</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <span className="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">3</span>
+            <div>
+              <h3 className="font-bold text-lg">Detours Are Okay</h3>
+              <p className="text-gray-600">Missing a dependency? Ask AI to install it. Stuck on an error? Ask for help. But always come back to your main thread.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <span className="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">4</span>
+            <div>
+              <h3 className="font-bold text-lg">Everything Serves the Goal</h3>
+              <p className="text-gray-600">Every question, every fix, every detour — it all helps you reach the final goal faster. Nothing is wasted.</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+          <p className="text-gray-700 font-medium">
+            "My goal is to build a presentation website. Help me install Node.js so I can get there."
+          </p>
+        </div>
+      </div>
+    ),
+    bgColor: "bg-gradient-to-br from-orange-50 to-amber-100",
+  },
+  {
     id: "style",
     title: "Bonus: Make It Pretty",
     content: (
