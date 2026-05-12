@@ -335,6 +335,28 @@ Share this link with your teacher/classmates.
 | Port already in use | Run \`npm run dev -- --port 3001\` to use a different port |
 | Layout breaks after applying 21st.dev style | Tell AI "Keep the original 100vh structure, only change colors and decorations" |`;
 
+function fallbackCopy(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    const successful = document.execCommand("copy");
+    if (successful) {
+      alert("Skill copied! Now paste it into your AI tool.");
+    } else {
+      alert("Copy failed. Please select all text and copy manually (Ctrl+C / Cmd+C).");
+    }
+  } catch (err) {
+    alert("Copy not supported. Please select all text and copy manually (Ctrl+C / Cmd+C).");
+  }
+  document.body.removeChild(textarea);
+}
+
 const steps = [
   {
     id: "intro",
@@ -410,11 +432,18 @@ const steps = [
         <p className="text-lg text-gray-600 text-center">
           Create a folder and paste this skill into your AI:
         </p>
-        <div className="bg-gray-900 rounded-xl p-6 overflow-x-auto relative max-h-[50vh]">
+        <div className="bg-gray-900 rounded-xl p-6 overflow-auto relative max-h-[50vh]">
           <button
             onClick={() => {
-              navigator.clipboard.writeText(skillContent);
-              alert("Skill copied! Now paste it into your AI tool.");
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(skillContent).then(() => {
+                  alert("Skill copied! Now paste it into your AI tool.");
+                }).catch(() => {
+                  fallbackCopy(skillContent);
+                });
+              } else {
+                fallbackCopy(skillContent);
+              }
             }}
             className="absolute top-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition-colors font-medium z-10"
           >
@@ -444,8 +473,12 @@ const steps = [
           <div className="bg-gray-900 rounded-xl p-6 relative group">
             <button
               onClick={() => {
-                navigator.clipboard.writeText("Use the presentation skill to build a website about climate change for my class presentation.");
-                alert("Copied!");
+                const text = "Use the presentation skill to build a website about climate change for my class presentation.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
               }}
               className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-gray-600 transition-colors"
             >
@@ -458,8 +491,12 @@ const steps = [
           <div className="bg-gray-900 rounded-xl p-6 relative group">
             <button
               onClick={() => {
-                navigator.clipboard.writeText("Use the presentation skill to create a portfolio showcase with 5 slides.");
-                alert("Copied!");
+                const text = "Use the presentation skill to create a portfolio showcase with 5 slides.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
               }}
               className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-gray-600 transition-colors"
             >
@@ -472,8 +509,12 @@ const steps = [
           <div className="bg-gray-900 rounded-xl p-6 relative group">
             <button
               onClick={() => {
-                navigator.clipboard.writeText("Use the presentation skill to make a pitch deck for my startup idea.");
-                alert("Copied!");
+                const text = "Use the presentation skill to make a pitch deck for my startup idea.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
               }}
               className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-gray-600 transition-colors"
             >
