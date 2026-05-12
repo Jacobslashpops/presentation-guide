@@ -1,10 +1,28 @@
+---
+name: presentation
+description: |
+  Presentation Website Builder — Helps complete beginners create presentation
+  websites using vibe coding with Next.js + React + TypeScript + Tailwind CSS.
+  Guides users through choosing an AI tool, creating a project, copying prompts,
+  finding styles on 21st.dev, and deploying to Vercel. Use when asked to
+  "build a presentation", "create slides", "presentation website",
+  "vibe coding presentation", or "how to make a slide website".
+triggers:
+  - build a presentation
+  - create presentation website
+  - presentation slides
+  - vibe coding presentation
+  - how to make slides
+---
+
 # Presentation Website Builder
 
 Helps complete beginners create presentation websites using vibe coding.
 
 ## When to Use This Skill
 
-Use this skill when you need to build a presentation webpage (class demo, project showcase, portfolio, etc.) where each slide fills the entire screen and flips like PowerPoint.
+When the user wants to build a presentation webpage (class demo, project showcase,
+portfolio, etc.) where each slide fills the entire screen and flips like PowerPoint.
 
 ## Prerequisites
 
@@ -14,7 +32,18 @@ Use this skill when you need to build a presentation webpage (class demo, projec
 
 ---
 
-## Step 1: Create the Project
+## Step 1: Choose Your AI Tool
+
+Pick one of these AI coding assistants. You only need one.
+
+| Tool | What it is | Download |
+|------|-----------|----------|
+| **Claude** | Desktop app with AI coding assistant | https://claude.ai/download |
+| **Codex** | OpenAI's CLI coding tool | https://github.com/openai/codex |
+
+---
+
+## Step 2: Create Your Project
 
 ### Open Your Terminal
 
@@ -45,7 +74,7 @@ npm install clsx tailwind-merge
 
 ---
 
-## Step 2: Ask AI to Generate the Base Structure
+## Step 3: Ask AI to Generate the Base Structure
 
 Open your AI tool and copy-paste this prompt:
 
@@ -107,7 +136,7 @@ mkdir components
 
 ---
 
-## Step 3: Run and Preview
+## Step 4: Run and Preview
 
 In your terminal, run:
 
@@ -125,7 +154,7 @@ Press `↓` or `Space` on your keyboard to flip through slides.
 
 ---
 
-## Step 4: Find Styles on 21st.dev
+## Step 5: Find Styles on 21st.dev
 
 ### Open the Website
 
@@ -180,7 +209,7 @@ After AI generates the new code, overwrite the original files. Refresh your brow
 
 ---
 
-## Step 5: Edit Your Content
+## Step 6: Edit Your Content
 
 ### Change Text
 
@@ -216,7 +245,7 @@ Simply delete the corresponding entry from the `slides` array.
 
 ---
 
-## Step 6: Deploy Online (Optional)
+## Step 7: Deploy Online (Optional)
 
 If you want to share your presentation with others, deploy it to Vercel (free):
 
