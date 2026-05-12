@@ -410,13 +410,13 @@ const steps = [
         <p className="text-lg text-gray-600 text-center">
           Create a folder and paste this skill into your AI:
         </p>
-        <div className="bg-gray-900 rounded-xl p-6 overflow-x-auto relative">
+        <div className="bg-gray-900 rounded-xl p-6 overflow-x-auto relative max-h-[50vh]">
           <button
             onClick={() => {
               navigator.clipboard.writeText(skillContent);
               alert("Skill copied! Now paste it into your AI tool.");
             }}
-            className="absolute top-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition-colors font-medium"
+            className="absolute top-4 right-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition-colors font-medium z-10"
           >
             Copy Skill
           </button>
