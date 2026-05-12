@@ -834,7 +834,7 @@ vercel`}</code>
             rel="noopener noreferrer"
             className="inline-block px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-500 transition-colors shadow-lg"
           >
-            Upload to Dropbox →
+            Upload to Google Drive →
           </a>
           <p className="text-gray-500 text-sm mt-3">Anyone with the link can upload. No sign-in required.</p>
         </div>
