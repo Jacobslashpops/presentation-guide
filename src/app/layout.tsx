@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CelePulse — Influencer Management",
-  description: "红人管理与付款系统",
+  title: "Build Presentation Websites with AI",
+  description: "A step-by-step guide for beginners to create presentation websites using vibe coding",
 };
 
 export default function RootLayout({
