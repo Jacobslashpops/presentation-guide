@@ -589,6 +589,148 @@ vercel`}</code>
     ),
     bgColor: "bg-gradient-to-br from-purple-50 to-pink-100",
   },
+  {
+    id: "cheatsheet",
+    title: "Quick Prompts Cheat Sheet",
+    content: (
+      <div className="space-y-6 text-left max-w-3xl mx-auto">
+        <p className="text-lg text-gray-600 text-center">
+          Common things you might need. Click to copy:
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Help me deploy my presentation website to port 3000.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Help me deploy my presentation website to port 3000.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Change the background color of slide 2 to a dark blue gradient.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Change the background color of slide 2 to a dark blue gradient.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Add a new slide after slide 3 with a chart showing my data.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Add a new slide after slide 3 with a chart showing my data.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Make the title font bigger and use a bold sans-serif font.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Make the title font bigger and use a bold sans-serif font.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Add a background image to the first slide using a URL.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Add a background image to the first slide using a URL.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Fix: the page is scrolling freely instead of snapping to each slide.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Fix: the page is scrolling freely instead of snapping to each slide.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Add keyboard navigation with arrow keys and spacebar.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Add keyboard navigation with arrow keys and spacebar.</p>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-5 relative group">
+            <button
+              onClick={() => {
+                const text = "Export my presentation as a static site for GitHub Pages.";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(() => alert("Copied!")).catch(() => fallbackCopy(text));
+                } else {
+                  fallbackCopy(text);
+                }
+              }}
+              className="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Copy
+            </button>
+            <p className="text-gray-300 font-mono text-sm pr-16">Export my presentation as a static site for GitHub Pages.</p>
+          </div>
+        </div>
+      </div>
+    ),
+    bgColor: "bg-white",
+  },
 ];
 
 export default function Home() {
