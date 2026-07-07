@@ -1,8 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { after } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchPostData, fetchSyncData, fetchYouTubeTranscription } from '@/lib/youtube'
 import { transcribeWithWhisper } from '@/lib/transcription'
@@ -1546,10 +1546,8 @@ export async function syncPost(postId: string) {
     }
   }
 
-  after(() => {
-    revalidatePath('/posts')
-    revalidatePath(`/posts/${postId}`)
-  })
+  revalidatePath('/posts')
+  revalidatePath(`/posts/${postId}`)
 
   // Async: trigger subtitle fetching only on first sync (pending state only)
   if (post.transcription_status === 'pending') {
@@ -1641,7 +1639,8 @@ export async function estimateQuotaCost(postId: string) {
  * Called asynchronously after createPost / syncPost.
  */
 export async function fetchPostTranscription(postId: string) {
-  const supabase = await createServerClient()
+  // Use admin client — this runs fire-and-forget, outside request context
+  const supabase = createAdminClient()
 
   const { data: post, error } = await supabase
     .from('posts')
@@ -1679,9 +1678,7 @@ export async function fetchPostTranscription(postId: string) {
         .eq('id', postId)
 
       // Chain trigger: transcription completed -> auto-start sentiment analysis
-      Promise.resolve().then(() =>
-        analyzePostVideoSentiment(postId).catch(console.error)
-      )
+      analyzeVideoSentimentBackground(postId, supabase).catch(console.error)
     } else {
       // Subtitles not available — mark as available for manual STT trigger
       await supabase
@@ -1726,7 +1723,6 @@ export async function fetchPostTranscription(postId: string) {
       .eq('id', postId)
   }
 
-  after(() => revalidatePath(`/posts/${postId}`))
 }
 
 /**
@@ -1775,8 +1771,6 @@ export async function triggerWhisperTranscription(postId: string) {
     .update({ transcription_status: 'processing' })
     .eq('id', postId)
 
-  after(() => revalidatePath(`/posts/${postId}`))
-
   // Fire-and-forget: run transcription + sentiment analysis in background.
   // This way the Server Action returns immediately and the user can navigate away.
   runTranscriptionPipeline(postId, post.url, estimatedCost, usedSeconds, quotaSeconds, yearMonth, user.id).catch(console.error)
@@ -1797,13 +1791,15 @@ async function runTranscriptionPipeline(
   yearMonth: string,
   userId: string,
 ) {
+  // Use admin client — no cookies() dependency, works outside request context
+  const supabase = createAdminClient()
+
   try {
     const result = await transcribeWithWhisper(url)
 
     if (result) {
       const quotaCost = estimatedCost > 0 ? estimatedCost : 60
 
-      const supabase = await createServerClient()
       await supabase
         .from('posts')
         .update({
@@ -1831,12 +1827,9 @@ async function runTranscriptionPipeline(
           { onConflict: 'user_id,year_month' }
         )
 
-      revalidatePath(`/posts/${postId}`)
-
-      // Chain: auto-trigger sentiment analysis
-      await analyzePostVideoSentiment(postId)
+      // Chain: auto-trigger sentiment analysis (using admin client)
+      await analyzeVideoSentimentBackground(postId, supabase)
     } else {
-      const supabase = await createServerClient()
       await supabase
         .from('posts')
         .update({
@@ -1846,7 +1839,6 @@ async function runTranscriptionPipeline(
         .eq('id', postId)
     }
   } catch (err) {
-    const supabase = await createServerClient()
     await supabase
       .from('posts')
       .update({
@@ -1856,10 +1848,54 @@ async function runTranscriptionPipeline(
       .eq('id', postId)
   }
 
-  after(() => {
-    revalidatePath('/posts')
-    revalidatePath(`/posts/${postId}`)
-  })
+}
+
+/**
+ * Background-safe version of analyzePostVideoSentiment.
+ * Uses a pre-created Supabase client (no cookies() dependency).
+ */
+async function analyzeVideoSentimentBackground(
+  postId: string,
+  supabase: ReturnType<typeof createAdminClient>,
+) {
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('id, title, transcription, transcription_status, video_sentiment_status')
+    .eq('id', postId)
+    .single()
+
+  if (error || !post) {
+    console.error('analyzeVideoSentimentBackground: Post not found', postId)
+    return
+  }
+
+  if (post.transcription_status !== 'completed' || !post.transcription) return
+  if (post.video_sentiment_status === 'completed') return
+
+  await supabase
+    .from('posts')
+    .update({ video_sentiment_status: 'processing' })
+    .eq('id', postId)
+
+  try {
+    const result = await analyzeVideoSentiment(post.transcription, post.title || '')
+
+    await supabase
+      .from('posts')
+      .update({
+        video_sentiment: result as unknown as Record<string, unknown>,
+        video_sentiment_status: 'completed',
+      })
+      .eq('id', postId)
+  } catch (err) {
+    console.error('Video sentiment analysis error:', err)
+    await supabase
+      .from('posts')
+      .update({ video_sentiment_status: 'failed' })
+      .eq('id', postId)
+  }
+
+  revalidatePath(`/posts/${postId}`)
 }
 
 export async function deletePost(postId: string) {
