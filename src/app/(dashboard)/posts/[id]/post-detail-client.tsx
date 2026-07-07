@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +26,8 @@ import {
   AlertCircle,
   FileText,
   Gauge,
+  Plug,
+  Cookie,
 } from 'lucide-react'
 import { SentimentReport } from './sentiment-report'
 
@@ -82,6 +84,124 @@ export function PostDetailClient({
   const [quota, setQuota] = useState<{ remaining_seconds: number; used_seconds: number; quota_seconds: number } | null>(null)
   const [estimatedSeconds, setEstimatedSeconds] = useState<number>(0)
 
+  // Mutable status fields — updated by polling
+  const [txStatus, setTxStatus] = useState(transcriptionStatus)
+  const [txText, setTxText] = useState(transcription)
+  const [txSource, setTxSource] = useState(transcriptionSource)
+  const [txLanguage, setTxLanguage] = useState(transcriptionLanguage)
+  const [txError, setTxError] = useState(transcriptionError)
+  const [vSentiment, setVSentiment] = useState(videoSentiment)
+  const [vSentimentStatus, setVSentimentStatus] = useState(videoSentimentStatus)
+  const [cSentiment, setCSentiment] = useState(commentSentiment)
+  const [cSentimentStatus, setCSentimentStatus] = useState(commentSentimentStatus)
+  const [polling, setPolling] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Extension detection
+  const [extensionReady, setExtensionReady] = useState(false)
+  const [refreshingCookies, setRefreshingCookies] = useState(false)
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) return
+      if (event.data?.type === 'CELEPULSE_PONG') {
+        setExtensionReady(true)
+      }
+      if (event.data?.type === 'CELEPULSE_COOKIES_RESULT') {
+        setRefreshingCookies(false)
+        if (event.data.ok) {
+          toast.success(`Cookies 已刷新（${event.data.count} 条）`)
+        } else {
+          toast.error(`Cookies 刷新失败: ${event.data.error || '未知错误'}`)
+        }
+      }
+    }
+    window.addEventListener('message', onMessage)
+    // Send ping on mount
+    window.postMessage({ type: 'CELEPULSE_PING' }, '*')
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  function handleRefreshCookies() {
+    setRefreshingCookies(true)
+    window.postMessage({ type: 'CELEPULSE_REFRESH_COOKIES' }, '*')
+    // Timeout fallback
+    setTimeout(() => setRefreshingCookies(false), 15000)
+  }
+
+  // Start polling when status is 'processing'
+  const startPolling = useCallback(() => {
+    if (pollRef.current) return
+    setPolling(true)
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/post-status?id=${postId}`)
+        if (!res.ok) return
+        const data = await res.json()
+
+        // Update transcription state
+        setTxStatus(data.transcription_status)
+        setTxError(data.transcription_error)
+        if (data.transcription_status === 'completed') {
+          setTxText(data.transcription)
+          setTxSource(data.transcription_source)
+          setTxLanguage(data.transcription_language)
+        }
+
+        // Update sentiment state
+        setVSentimentStatus(data.video_sentiment_status)
+        if (data.video_sentiment_status === 'completed') {
+          setVSentiment(data.video_sentiment)
+        }
+        setCSentimentStatus(data.comment_sentiment_status)
+        if (data.comment_sentiment_status === 'completed') {
+          setCSentiment(data.comment_sentiment)
+        }
+
+        // Check if everything is done
+        const txDone = data.transcription_status !== 'processing'
+        const sentDone = data.video_sentiment_status !== 'processing'
+        if (txDone && sentDone) {
+          // Stop polling
+          if (pollRef.current) {
+            clearInterval(pollRef.current)
+            pollRef.current = null
+          }
+          setPolling(false)
+          setTranscribing(false)
+
+          // Notify user
+          if (data.transcription_status === 'completed') {
+            toast.success('转写完成' + (data.video_sentiment_status === 'completed' ? '，情绪分析已就绪' : ''))
+          } else if (data.transcription_status === 'failed') {
+            toast.error(`转写失败: ${data.transcription_error || '未知错误'}`)
+          }
+
+          // Refresh quota
+          try {
+            const quotaData = await getTranscriptionQuota()
+            setQuota({
+              remaining_seconds: quotaData.remaining_seconds,
+              used_seconds: quotaData.used_seconds,
+              quota_seconds: quotaData.quota_seconds,
+            })
+          } catch {}
+        }
+      } catch {}
+    }, 5000)
+  }, [postId])
+
+  // Auto-start polling if already processing on mount
+  useEffect(() => {
+    if (txStatus === 'processing' || vSentimentStatus === 'processing') {
+      setTranscribing(true)
+      startPolling()
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch quota and estimated cost on mount
   useEffect(() => {
     let cancelled = false
@@ -122,18 +242,15 @@ export function PostDetailClient({
   async function handleWhisperTranscribe() {
     setTranscribing(true)
     try {
+      // Server action returns immediately after marking as processing
       await triggerWhisperTranscription(postId)
-      toast.success('AI 转写已启动，请稍后刷新页面查看结果')
-      // Refresh quota after transcription
-      const quotaData = await getTranscriptionQuota()
-      setQuota({
-        remaining_seconds: quotaData.remaining_seconds,
-        used_seconds: quotaData.used_seconds,
-        quota_seconds: quotaData.quota_seconds,
-      })
+      // Status is now 'processing' — start polling for completion
+      setTxStatus('processing')
+      setTxError(null)
+      toast.info('AI 转写已启动，后台运行中...')
+      startPolling()
     } catch (e) {
       toast.error((e as Error).message || '转写失败')
-    } finally {
       setTranscribing(false)
     }
   }
@@ -213,25 +330,28 @@ export function PostDetailClient({
 
       {/* Transcription Section */}
       <TranscriptionSection
-        status={transcriptionStatus}
-        text={transcription}
-        source={transcriptionSource}
-        language={transcriptionLanguage}
-        error={transcriptionError}
+        status={txStatus}
+        text={txText}
+        source={txSource}
+        language={txLanguage}
+        error={txError}
         expanded={transcriptionExpanded}
         onToggleExpand={() => setTranscriptionExpanded(!transcriptionExpanded)}
         onTriggerWhisper={handleWhisperTranscribe}
         transcribing={transcribing}
         quota={quota}
         estimatedSeconds={estimatedSeconds}
+        extensionReady={extensionReady}
+        onRefreshCookies={handleRefreshCookies}
+        refreshingCookies={refreshingCookies}
       />
 
       {/* Sentiment Analysis Report */}
       <SentimentReport
-        videoSentiment={videoSentiment}
-        videoSentimentStatus={videoSentimentStatus}
-        commentSentiment={commentSentiment}
-        commentSentimentStatus={commentSentimentStatus}
+        videoSentiment={vSentiment}
+        videoSentimentStatus={vSentimentStatus}
+        commentSentiment={cSentiment}
+        commentSentimentStatus={cSentimentStatus}
       />
 
       {/* Comments Section */}
@@ -448,6 +568,9 @@ function TranscriptionSection({
   transcribing,
   quota,
   estimatedSeconds,
+  extensionReady,
+  onRefreshCookies,
+  refreshingCookies,
 }: {
   status: string | null
   text: string | null
@@ -460,6 +583,9 @@ function TranscriptionSection({
   transcribing: boolean
   quota: { remaining_seconds: number; used_seconds: number; quota_seconds: number } | null
   estimatedSeconds: number
+  extensionReady: boolean
+  onRefreshCookies: () => void
+  refreshingCookies: boolean
 }) {
   const LINE_LIMIT = 300
   const needsTruncation = text ? text.length > LINE_LIMIT : false
@@ -489,6 +615,31 @@ function TranscriptionSection({
             <Badge variant="outline" className="text-xs">
               {language.toUpperCase()}
             </Badge>
+          )}
+        </div>
+        {/* Extension status + cookie refresh */}
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-1 text-xs ${
+            extensionReady ? 'text-green-600' : 'text-muted-foreground'
+          }`}>
+            <Plug className="w-3.5 h-3.5" />
+            {extensionReady ? '插件已连接' : '未检测到插件'}
+          </div>
+          {extensionReady && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRefreshCookies}
+              disabled={refreshingCookies}
+              className="h-7 px-2 text-xs gap-1"
+            >
+              {refreshingCookies ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Cookie className="w-3 h-3" />
+              )}
+              {refreshingCookies ? '刷新中...' : '刷新 Cookies'}
+            </Button>
           )}
         </div>
       </div>

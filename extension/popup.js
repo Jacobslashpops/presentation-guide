@@ -1,7 +1,5 @@
 // CelePulse Extension Popup — Silent Mode
 document.addEventListener('DOMContentLoaded', async () => {
-  const backendUrlInput = document.getElementById('backendUrl')
-  const saveBtn = document.getElementById('saveBtn')
   const statusBar = document.getElementById('statusBar')
   const detectedEl = document.getElementById('detected')
   const platformBadge = document.getElementById('platformBadge')
@@ -11,9 +9,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const totalCountEl = document.getElementById('totalCount')
   const forceBtn = document.getElementById('forceBtn')
 
-  // Load saved settings
-  const storage = await chrome.storage.local.get(['celepulseUrl', 'collectionLog'])
-  if (storage.celepulseUrl) backendUrlInput.value = storage.celepulseUrl
+  // Load collection log
+  const storage = await chrome.storage.local.get(['collectionLog'])
 
   // Calculate stats from collection log
   const log = storage.collectionLog || []
@@ -105,20 +102,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }, 3000)
   }
-
-  // Save settings
-  saveBtn.addEventListener('click', async () => {
-    const url = backendUrlInput.value.replace(/\/$/, '')
-    if (!url) {
-      statusBar.className = 'status-bar error'
-      statusBar.textContent = '请输入后台地址'
-      return
-    }
-
-    await chrome.storage.local.set({ celepulseUrl: url })
-    statusBar.className = 'status-bar success'
-    statusBar.textContent = '设置已保存'
-  })
 
   // Force re-collect
   forceBtn.addEventListener('click', async () => {

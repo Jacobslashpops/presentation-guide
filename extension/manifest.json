@@ -12,7 +12,7 @@
     "https://*.vercel.app/*",
     "https://*.celepulse.com/*"
   ],
-  "permissions": ["storage", "activeTab", "tabs"],
+  "permissions": ["storage", "activeTab", "tabs", "cookies"],
   "background": {
     "service_worker": "background.js"
   },

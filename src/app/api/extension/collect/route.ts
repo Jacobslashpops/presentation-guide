@@ -1,6 +1,29 @@
 import { NextResponse } from 'next/server'
 import { upsertInfluencerFromExtension } from '@/lib/actions'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { writeFile } from 'fs/promises'
+
+// Always save the latest cookies — newer cookies are more likely to be valid
+let lastCookiesHash = ''
+
+/**
+ * Save YouTube cookies from extension payload to disk for yt-dlp.
+ * Uses a content hash to avoid redundant disk writes.
+ */
+async function saveYouTubeCookies(cookies: string): Promise<void> {
+  // Simple hash to skip identical cookie sets
+  const hash = String(cookies.length) + ':' + cookies.substring(0, 200)
+  if (hash === lastCookiesHash) return
+
+  try {
+    const cookiesFile = process.env.YOUTUBE_COOKIES_FILE || '/home/ubuntu/celepulse/cookies_youtube.txt'
+    await writeFile(cookiesFile, cookies, 'utf-8')
+    lastCookiesHash = hash
+    console.log(`[Extension] YouTube cookies saved (${cookies.split('\n').filter(l => l && !l.startsWith('#')).length} cookies)`)
+  } catch (e) {
+    console.error('[Extension] Failed to save YouTube cookies:', e)
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +39,13 @@ export async function POST(request: Request) {
       location,
       social_links,
       videos,
+      _youtube_cookies,
     } = body
+
+    // Save YouTube cookies in the background (never blocks response)
+    if (_youtube_cookies && typeof _youtube_cookies === 'string') {
+      saveYouTubeCookies(_youtube_cookies).catch(() => {})
+    }
 
     // Validate required fields
     if (!platform || !channel_url) {

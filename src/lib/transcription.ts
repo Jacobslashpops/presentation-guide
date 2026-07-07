@@ -2,25 +2,84 @@
  * Transcription module — OpenAI Whisper API integration
  *
  * Used as a fallback when YouTube built-in subtitles are unavailable.
- * Uses youtubei.js (InnerTube API) for audio download — no yt-dlp or cookies needed.
- * Requires: OPENAI_API_KEY env var, ffmpeg installed on the server.
+ * Uses yt-dlp for audio download (with cookies to bypass YouTube bot detection).
+ * Requires: OPENAI_API_KEY env var, ffmpeg + yt-dlp installed on the server.
+ * Optional: YOUTUBE_COOKIES_FILE env var (path to Netscape-format cookies file).
  */
 
 import OpenAI from 'openai'
-import { Innertube } from 'youtubei.js'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import { stat, readFile, rm, writeFile, mkdir } from 'fs/promises'
+import { stat, readFile, rm, mkdir, readdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
-import { Readable } from 'stream'
-import { pipeline } from 'stream/promises'
 
 const execAsync = promisify(exec)
 
 // Whisper API limit: 25MB per file
 const MAX_FILE_SIZE = 24 * 1024 * 1024
+
+// Temp directory for audio processing
+const WORK_DIR = join(tmpdir(), 'celepulse-transcription')
+
+// Max age for orphaned temp files (30 minutes)
+const MAX_FILE_AGE_MS = 30 * 60 * 1000
+
+// Periodic cleanup interval (15 minutes)
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000
+
+/**
+ * Wipe the entire work directory. Called on startup and before/after each job.
+ */
+async function cleanupWorkDir(): Promise<void> {
+  try {
+    await rm(WORK_DIR, { recursive: true, force: true })
+  } catch {
+    // ignore cleanup errors
+  }
+}
+
+/**
+ * Remove orphaned files older than MAX_FILE_AGE_MS from the work directory.
+ */
+async function cleanupStaleFiles(): Promise<void> {
+  try {
+    const entries = await readdir(WORK_DIR, { withFileTypes: true })
+    const now = Date.now()
+    for (const entry of entries) {
+      try {
+        const filePath = join(WORK_DIR, entry.name)
+        const stats = await stat(filePath)
+        if (now - stats.mtimeMs > MAX_FILE_AGE_MS) {
+          await rm(filePath, { recursive: true, force: true })
+          console.log(`Cleaned stale temp file: ${entry.name}`)
+        }
+      } catch {
+        // skip individual file errors
+      }
+    }
+  } catch {
+    // work dir doesn't exist, nothing to clean
+  }
+}
+
+// Start periodic cleanup on module load
+let cleanupTimer: ReturnType<typeof setInterval> | null = null
+function startPeriodicCleanup(): void {
+  if (cleanupTimer) return
+  cleanupTimer = setInterval(() => {
+    cleanupStaleFiles().catch(console.error)
+  }, CLEANUP_INTERVAL_MS)
+  // Don't keep the process alive just for cleanup
+  if (cleanupTimer && typeof cleanupTimer === 'object' && 'unref' in cleanupTimer) {
+    cleanupTimer.unref()
+  }
+}
+
+// Run startup cleanup immediately
+startPeriodicCleanup()
+cleanupWorkDir().catch(console.error)
 
 export interface WhisperTranscriptionResult {
   text: string
@@ -47,66 +106,37 @@ function extractVideoId(url: string): string | null {
 }
 
 /**
- * Download audio from a YouTube video using youtubei.js (InnerTube API).
- * No cookies, no yt-dlp needed — pure Node.js.
+ * Download audio from a YouTube video using yt-dlp.
+ * Uses cookies file if available to bypass YouTube bot detection.
  * Returns the path to the downloaded audio file.
  */
 async function downloadAudio(videoUrl: string, outputDir: string): Promise<string> {
-  const videoId = extractVideoId(videoUrl)
-  if (!videoId) {
-    throw new Error('无法从 URL 中提取 YouTube 视频 ID')
-  }
+  const outputFile = join(outputDir, `${randomUUID()}.m4a`)
+  const cookiesFile = process.env.YOUTUBE_COOKIES_FILE || ''
+  console.log(`[Transcription] cookies file: ${cookiesFile || '(not configured)'}`)
 
-  let innertube: Innertube
+  // Build yt-dlp command with deno in PATH for PO Token support
+  const envPath = `/home/ubuntu/.deno/bin:/usr/local/bin:${process.env.PATH || '/usr/bin'}`
+  const cookiesArg = cookiesFile ? `--cookies "${cookiesFile}"` : ''
+  const cmd = `PATH="${envPath}" yt-dlp ${cookiesArg} -f "bestaudio[ext=m4a]/bestaudio" -o "${outputFile}" --no-playlist --force-ipv4 "${videoUrl}"`
+
   try {
-    innertube = await Innertube.create({
-      retrieve_player: true,
-      generate_session_locally: true,
-    })
+    await execAsync(cmd, { timeout: 180_000 }) // 3 minute timeout
   } catch (err) {
-    throw new Error(`InnerTube 初始化失败: ${(err as Error).message}`)
-  }
-
-  let info
-  try {
-    info = await innertube.getBasicInfo(videoId)
-  } catch (err) {
-    throw new Error(`获取视频信息失败: ${(err as Error).message}`)
-  }
-
-  if (!info || !info.streaming_data) {
-    throw new Error('无法获取视频流数据，视频可能不可用')
-  }
-
-  // Get the best audio-only format (highest bitrate)
-  const audioFormat = info.chooseFormat({
-    type: 'audio',
-    quality: 'best',
-  })
-
-  if (!audioFormat) {
-    throw new Error('未找到可用的音频流格式')
-  }
-
-  // Get the deciphered streaming URL
-  const streamUrl = await audioFormat.decipher(innertube.session.player)
-
-  // Download the audio stream to a file
-  const ext = audioFormat.mime_type?.includes('webm') ? 'webm' : 'mp4'
-  const outputFile = join(outputDir, `${randomUUID()}.${ext}`)
-
-  try {
-    const response = await fetch(streamUrl)
-    if (!response.ok || !response.body) {
-      throw new Error(`音频流下载失败: HTTP ${response.status}`)
+    const stderr = (err as any).stderr || ''
+    const stdout = (err as any).stdout || ''
+    const errMsg = stderr || stdout || (err as Error).message
+    if (errMsg.includes('bot') || errMsg.includes('Sign in')) {
+      throw new Error('YouTube 拒绝访问（反爬检测），请更新服务器 cookies 文件')
     }
+    throw new Error(`yt-dlp 音频下载失败: ${errMsg.substring(0, 300)}`)
+  }
 
-    // Convert Web ReadableStream to Node.js Readable and pipe to file
-    const nodeStream = Readable.fromWeb(response.body as any)
-    const { createWriteStream } = await import('fs')
-    await pipeline(nodeStream, createWriteStream(outputFile))
-  } catch (err) {
-    throw new Error(`音频流下载失败: ${(err as Error).message}`)
+  // Verify the file was created
+  try {
+    await stat(outputFile)
+  } catch {
+    throw new Error('yt-dlp 未生成音频文件')
   }
 
   return outputFile
@@ -181,7 +211,7 @@ export async function transcribeWithWhisper(
     throw new Error('OPENAI_API_KEY 未配置')
   }
 
-  const workDir = join(tmpdir(), 'celepulse-transcription')
+  const workDir = WORK_DIR
   await mkdir(workDir, { recursive: true })
 
   let audioPath: string | null = null
@@ -220,14 +250,7 @@ export async function transcribeWithWhisper(
       language: detectedLanguage,
     }
   } finally {
-    // 4. Cleanup temp files
-    const filesToClean = [audioPath, ...chunkPaths].filter(Boolean) as string[]
-    for (const f of filesToClean) {
-      try {
-        await rm(f, { force: true })
-      } catch {
-        // ignore cleanup errors
-      }
-    }
+    // 4. Cleanup: wipe entire work directory (most robust approach)
+    await cleanupWorkDir()
   }
 }

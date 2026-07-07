@@ -371,44 +371,52 @@ export interface TranscriptionResult {
  * Fetch YouTube video transcription/subtitles using youtube-transcript-api-js.
  * Prioritizes manually created subtitles over auto-generated ones.
  * Returns null if no subtitles are available.
+ * Throws an error if YouTube blocks the request (bot detection, etc.).
  */
 export async function fetchYouTubeTranscription(
   videoId: string
 ): Promise<TranscriptionResult | null> {
+  let transcriptList
   try {
     const api = createYouTubeTranscriptApi()
-    const transcriptList = await api.list(videoId)
-
-    // Get all transcripts and prioritize manually created over auto-generated
-    const allTranscripts = transcriptList.getAllTranscripts()
-    if (allTranscripts.length === 0) return null
-
-    const manual = allTranscripts.find((t) => !t.isGenerated)
-    const generated = allTranscripts.find((t) => t.isGenerated)
-    const transcript = manual || generated || null
-    if (!transcript) return null
-
-    const fetched = await transcript.fetch()
-    // Join snippets with spaces (each snippet is a few words), decode HTML entities,
-    // strip any remaining HTML tags, and collapse multiple spaces
-    const raw = fetched.snippets.map((s) => s.text).join(' ')
-    const text = raw
-      .replace(/&#39;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/<[^>]*>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-
-    return {
-      text,
-      language: fetched.languageCode || null,
-      source: 'youtube_subtitle',
-    }
+    transcriptList = await api.list(videoId)
   } catch (error) {
-    console.error('YouTube transcription fetch error:', error)
+    const msg = (error as Error).message || ''
+    // Differentiate between "no captions" and "YouTube blocked us"
+    if (msg.includes('bot') || msg.includes('Sign in') || msg.includes('unplayable')) {
+      throw new Error('YouTube 访问受限（反爬检测），请稍后重试或使用 AI 转写')
+    }
+    // If the error is about no transcripts, return null
+    console.error('YouTube transcription list error:', error)
     return null
+  }
+
+  // Get all transcripts and prioritize manually created over auto-generated
+  const allTranscripts = transcriptList.getAllTranscripts()
+  if (allTranscripts.length === 0) return null
+
+  const manual = allTranscripts.find((t) => !t.isGenerated)
+  const generated = allTranscripts.find((t) => t.isGenerated)
+  const transcript = manual || generated || null
+  if (!transcript) return null
+
+  const fetched = await transcript.fetch()
+  // Join snippets with spaces (each snippet is a few words), decode HTML entities,
+  // strip any remaining HTML tags, and collapse multiple spaces
+  const raw = fetched.snippets.map((s) => s.text).join(' ')
+  const text = raw
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return {
+    text,
+    language: fetched.languageCode || null,
+    source: 'youtube_subtitle',
   }
 }

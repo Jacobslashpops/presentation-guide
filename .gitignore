@@ -36,3 +36,11 @@ coverage/
 # Build
 dist/
 build/
+
+# Chrome Extension
+celepulse-key.pem
+chrome-extension-key.md
+extension.crx
+
+# YouTube cookies (DO NOT commit)
+cookies_youtube.txt

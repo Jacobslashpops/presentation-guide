@@ -8,23 +8,104 @@
 // Pending scrape requests: influencerId -> sourceTabId
 const pendingScrapes = new Map()
 
+// Cache YouTube cookies to avoid fetching them on every request
+let cachedYoutubeCookies = null
+let cookiesLastFetched = 0
+const COOKIES_CACHE_MS = 5 * 60 * 1000 // 5 min cache
+
+/**
+ * Extract YouTube cookies in Netscape format for yt-dlp.
+ * Returns a string that yt-dlp can consume via --cookies flag.
+ */
+async function getYouTubeCookiesNetscape() {
+  const now = Date.now()
+  if (cachedYoutubeCookies && (now - cookiesLastFetched) < COOKIES_CACHE_MS) {
+    return cachedYoutubeCookies
+  }
+
+  try {
+    // Collect cookies from both YouTube and Google domains
+    // YouTube auth cookies (SID, HSID, SSID, APISID, SAPISID) are split across both domains
+    const [ytCookies, googleCookies] = await Promise.all([
+      chrome.cookies.getAll({ domain: '.youtube.com' }),
+      chrome.cookies.getAll({ domain: '.google.com' }),
+    ])
+    const cookies = [...ytCookies, ...googleCookies]
+    if (!cookies || cookies.length === 0) return null
+
+    // Convert to Netscape cookie format
+    const lines = ['# Netscape HTTP Cookie File', '# Auto-exported by CelePulse Import', '']
+    for (const c of cookies) {
+      const domain = c.domain
+      const flag = domain.startsWith('.') ? 'TRUE' : 'FALSE'
+      const path = c.path || '/'
+      const secure = c.secure ? 'TRUE' : 'FALSE'
+      const expires = c.expirationDate ? Math.floor(c.expirationDate) : 0
+      lines.push([domain, flag, path, secure, expires, c.name, c.value].join('\t'))
+    }
+
+    cachedYoutubeCookies = lines.join('\n')
+    cookiesLastFetched = now
+    return cachedYoutubeCookies
+  } catch (e) {
+    console.error('[CelePulse BG] Failed to get YouTube cookies:', e)
+    return null
+  }
+}
+
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle API requests from content scripts (avoids mixed content issues)
   if (message.type === 'API_REQUEST') {
     (async () => {
       try {
-        const storage = await chrome.storage.local.get('celepulseUrl')
-        const baseUrl = storage.celepulseUrl || 'http://localhost:30015'
+        const baseUrl = 'https://admin.celepulse.com'
+
+        // Attach YouTube cookies to every API request for server-side yt-dlp
+        const youtubeCookies = await getYouTubeCookiesNetscape()
+        const payloadWithCookies = youtubeCookies
+          ? { ...message.payload, _youtube_cookies: youtubeCookies }
+          : message.payload
+
         const res = await fetch(`${baseUrl}${message.endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(message.payload),
+          body: JSON.stringify(payloadWithCookies),
         })
         const data = await res.json().catch(() => ({}))
         sendResponse({ ok: res.ok, status: res.status, data, error: data.error || null })
       } catch (e) {
         sendResponse({ ok: false, error: e.message })
+      }
+    })()
+    return true // async response
+  }
+
+  // Handle manual cookie refresh from CelePulse web app (via bridge)
+  if (message.type === 'REFRESH_COOKIES_REQUEST') {
+    (async () => {
+      try {
+        // Force clear cache so we get fresh cookies
+        cachedYoutubeCookies = null
+        cookiesLastFetched = 0
+
+        const cookies = await getYouTubeCookiesNetscape()
+        if (!cookies) {
+          sendResponse({ ok: false, count: 0, error: '未找到 YouTube cookies，请先登录 YouTube' })
+          return
+        }
+
+        const baseUrl = 'https://admin.celepulse.com'
+        const res = await fetch(`${baseUrl}/api/extension/refresh-cookies`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cookies }),
+        })
+
+        const count = cookies.split('\n').filter(l => l && !l.startsWith('#')).length
+        sendResponse({ ok: res.ok, count })
+      } catch (e) {
+        sendResponse({ ok: false, count: 0, error: e.message })
       }
     })()
     return true // async response

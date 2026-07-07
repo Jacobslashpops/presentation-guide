@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchPostData, fetchSyncData, fetchYouTubeTranscription } from '@/lib/youtube'
@@ -1545,8 +1546,10 @@ export async function syncPost(postId: string) {
     }
   }
 
-  revalidatePath('/posts')
-  revalidatePath(`/posts/${postId}`)
+  after(() => {
+    revalidatePath('/posts')
+    revalidatePath(`/posts/${postId}`)
+  })
 
   // Async: trigger subtitle fetching only on first sync (pending state only)
   if (post.transcription_status === 'pending') {
@@ -1685,21 +1688,45 @@ export async function fetchPostTranscription(postId: string) {
         .from('posts')
         .update({
           transcription_status: 'available_for_stt',
-          transcription_error: 'YouTube 字幕不可用，可使用 AI 转写',
+          transcription_error: '该视频无 YouTube 字幕，可使用 AI 转写',
         })
         .eq('id', postId)
     }
   } catch (err) {
+    // Error was thrown (e.g., YouTube bot detection) — verify via Data API
+    const errorMsg = (err as Error).message
+    let captionStatus: string | null = null
+    try {
+      const apiKey = process.env.YOUTUBE_API_KEY
+      if (apiKey) {
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${post.platform_post_id}&key=${apiKey}`
+        )
+        if (res.ok) {
+          const videoData = await res.json()
+          captionStatus = videoData.items?.[0]?.contentDetails?.caption
+        }
+      }
+    } catch {
+      // Ignore verification errors
+    }
+
+    const userMessage = captionStatus === 'false'
+      ? '该视频无 YouTube 字幕，可使用 AI 转写'
+      : captionStatus === 'true'
+        ? `字幕获取失败（${errorMsg}），请稍后重试或使用 AI 转写`
+        : `字幕获取失败（${errorMsg}），可使用 AI 转写`
+
     await supabase
       .from('posts')
       .update({
         transcription_status: 'available_for_stt',
-        transcription_error: (err as Error).message,
+        transcription_error: userMessage,
       })
       .eq('id', postId)
   }
 
-  revalidatePath(`/posts/${postId}`)
+  after(() => revalidatePath(`/posts/${postId}`))
 }
 
 /**
@@ -1742,20 +1769,41 @@ export async function triggerWhisperTranscription(postId: string) {
     )
   }
 
-  // Immediately mark as processing to prevent double-clicks
+  // Mark as processing to prevent double-clicks
   await supabase
     .from('posts')
     .update({ transcription_status: 'processing' })
     .eq('id', postId)
 
-  revalidatePath(`/posts/${postId}`)
+  after(() => revalidatePath(`/posts/${postId}`))
 
+  // Fire-and-forget: run transcription + sentiment analysis in background.
+  // This way the Server Action returns immediately and the user can navigate away.
+  runTranscriptionPipeline(postId, post.url, estimatedCost, usedSeconds, quotaSeconds, yearMonth, user.id).catch(console.error)
+
+  return { started: true }
+}
+
+/**
+ * Background pipeline: download audio -> Whisper API -> save -> sentiment analysis.
+ * Runs independently of the HTTP request lifecycle.
+ */
+async function runTranscriptionPipeline(
+  postId: string,
+  url: string,
+  estimatedCost: number,
+  usedSeconds: number,
+  quotaSeconds: number,
+  yearMonth: string,
+  userId: string,
+) {
   try {
-    const result = await transcribeWithWhisper(post.url)
+    const result = await transcribeWithWhisper(url)
 
     if (result) {
-      const quotaCost = estimatedCost > 0 ? estimatedCost : 60 // fallback 1 min
+      const quotaCost = estimatedCost > 0 ? estimatedCost : 60
 
+      const supabase = await createServerClient()
       await supabase
         .from('posts')
         .update({
@@ -1768,13 +1816,13 @@ export async function triggerWhisperTranscription(postId: string) {
         })
         .eq('id', postId)
 
-      // Record quota usage (upsert)
+      // Record quota usage
       const newUsedSeconds = usedSeconds + quotaCost
       await supabase
         .from('transcription_usage')
         .upsert(
           {
-            user_id: user.id,
+            user_id: userId,
             year_month: yearMonth,
             used_seconds: newUsedSeconds,
             quota_seconds: quotaSeconds,
@@ -1783,11 +1831,12 @@ export async function triggerWhisperTranscription(postId: string) {
           { onConflict: 'user_id,year_month' }
         )
 
-      // Chain trigger: Whisper transcription completed -> auto-start sentiment analysis
-      Promise.resolve().then(() =>
-        analyzePostVideoSentiment(postId).catch(console.error)
-      )
+      revalidatePath(`/posts/${postId}`)
+
+      // Chain: auto-trigger sentiment analysis
+      await analyzePostVideoSentiment(postId)
     } else {
+      const supabase = await createServerClient()
       await supabase
         .from('posts')
         .update({
@@ -1797,6 +1846,7 @@ export async function triggerWhisperTranscription(postId: string) {
         .eq('id', postId)
     }
   } catch (err) {
+    const supabase = await createServerClient()
     await supabase
       .from('posts')
       .update({
@@ -1806,8 +1856,10 @@ export async function triggerWhisperTranscription(postId: string) {
       .eq('id', postId)
   }
 
-  revalidatePath('/posts')
-  revalidatePath(`/posts/${postId}`)
+  after(() => {
+    revalidatePath('/posts')
+    revalidatePath(`/posts/${postId}`)
+  })
 }
 
 export async function deletePost(postId: string) {
