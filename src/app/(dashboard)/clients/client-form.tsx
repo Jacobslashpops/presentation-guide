@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { createClient, updateClient, deleteClient } from '@/lib/actions'
+import { toast } from 'sonner'
 
 interface ClientFormProps {
   client?: {
@@ -37,7 +38,7 @@ export function ClientForm({ client }: ClientFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to save client:', error)
-      alert('保存失败，请重试')
+      toast.error((error as Error).message || '保存失败，请重试')
     }
   }
 
@@ -49,13 +50,13 @@ export function ClientForm({ client }: ClientFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to delete client:', error)
-      alert('删除失败，请重试')
+      toast.error((error as Error).message || '删除失败，请重试')
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '新建客户'}
         </Button>

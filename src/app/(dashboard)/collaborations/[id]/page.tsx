@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DeliverableForm } from './deliverable-form'
 import { ConfirmDeliverablesButton } from './confirm-button'
+import { PaymentForm } from './payment-form'
 import Link from 'next/link'
 
 interface Props {
@@ -18,7 +19,7 @@ export default async function CollaborationDetailPage({ params }: Props) {
 
   const { data: collaboration } = await supabase
     .from('collaborations')
-    .select('*, project:projects(name, client:clients(name)), influencer:influencers(display_name, email), currency:currencies(code)')
+    .select('*, project:projects(name, client:clients(name)), influencer:influencers(display_name, email), currency:currencies(id, code)')
     .eq('id', id)
     .single()
 
@@ -29,6 +30,27 @@ export default async function CollaborationDetailPage({ params }: Props) {
     .select('*')
     .eq('collaboration_id', id)
     .order('created_at', { ascending: true })
+
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('*, currency:currencies(code), requested_by_user:users(full_name)')
+    .eq('collaboration_id', id)
+    .order('created_at', { ascending: false })
+
+  // Find approved invoice for this collaboration
+  const { data: invoices } = await supabase
+    .from('invoices')
+    .select('id, amount, status')
+    .eq('collaboration_id', id)
+    .eq('status', 'approved')
+
+  const approvedInvoice = invoices?.[0]
+
+  // Calculate remaining payment amount
+  const totalPaid = payments
+    ?.filter(p => ['pending', 'paid'].includes(p.status))
+    .reduce((sum, p) => sum + (p.requested_amount || 0), 0) || 0
+  const remainingAmount = (collaboration.total_amount || 0) - totalPaid
 
   const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     draft: { label: '草稿', variant: 'secondary' },
@@ -43,9 +65,22 @@ export default async function CollaborationDetailPage({ params }: Props) {
     approved: { label: '已审批', variant: 'outline' },
   }
 
+  const paymentStatusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+    pending: { label: '待付款', variant: 'default' },
+    paid: { label: '已付款', variant: 'outline' },
+    rejected: { label: '已拒绝', variant: 'destructive' },
+    cancelled: { label: '已取消', variant: 'secondary' },
+  }
+
   const project = collaboration.project as any
   const influencer = collaboration.influencer as any
   const currency = (collaboration as any).currency
+
+  const canRequestPayment =
+    collaboration.deliverables_confirmed &&
+    approvedInvoice &&
+    remainingAmount > 0 &&
+    !payments?.some(p => p.status === 'pending')
 
   return (
     <div className="space-y-6">
@@ -71,7 +106,7 @@ export default async function CollaborationDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">合作价格</CardTitle>
@@ -111,6 +146,30 @@ export default async function CollaborationDetailPage({ params }: Props) {
                 <ConfirmDeliverablesButton collaborationId={collaboration.id} />
               </div>
             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">付款状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="text-sm">
+                已付: {currency?.code} {totalPaid.toLocaleString()}
+              </div>
+              <div className="text-sm">
+                剩余: {currency?.code} {remainingAmount.toLocaleString()}
+              </div>
+              {canRequestPayment && approvedInvoice && (
+                <PaymentForm
+                  collaborationId={collaboration.id}
+                  invoiceId={approvedInvoice.id}
+                  currencyId={currency?.id}
+                  maxAmount={remainingAmount}
+                  currencyCode={currency?.code}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -171,6 +230,69 @@ export default async function CollaborationDetailPage({ params }: Props) {
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     暂无交付物，点击右上角添加
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Payments Section */}
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>付款记录</CardTitle>
+            <CardDescription>合作相关的付款申请和记录</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>申请金额</TableHead>
+                <TableHead>货币</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>申请人</TableHead>
+                <TableHead>申请时间</TableHead>
+                <TableHead>实际付款金额</TableHead>
+                <TableHead className="w-[100px]">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments?.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell className="font-medium">
+                    {payment.requested_amount?.toLocaleString()}
+                  </TableCell>
+                  <TableCell>{(payment as any).currency?.code}</TableCell>
+                  <TableCell>
+                    <Badge variant={paymentStatusMap[payment.status]?.variant || 'default'}>
+                      {paymentStatusMap[payment.status]?.label || payment.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{(payment as any).requested_by_user?.full_name || '-'}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {payment.requested_at
+                      ? new Date(payment.requested_at).toLocaleDateString('zh-CN')
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {payment.actual_amount
+                      ? `${payment.actual_amount.toLocaleString()}`
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/payments/${payment.id}`}>
+                      <Button variant="ghost" size="sm">查看</Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {(!payments || payments.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    暂无付款记录
                   </TableCell>
                 </TableRow>
               )}

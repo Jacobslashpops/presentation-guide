@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { approveInvoice, rejectInvoice } from '@/lib/actions'
+import { toast } from 'sonner'
 
 interface InvoiceActionsProps {
   invoiceId: string
@@ -14,7 +15,7 @@ export function InvoiceActions({ invoiceId }: InvoiceActionsProps) {
       await approveInvoice(invoiceId)
     } catch (error) {
       console.error('Failed to approve invoice:', error)
-      alert('审批失败')
+      toast.error((error as Error).message || '审批失败')
     }
   }
 
@@ -24,7 +25,7 @@ export function InvoiceActions({ invoiceId }: InvoiceActionsProps) {
       await rejectInvoice(invoiceId)
     } catch (error) {
       console.error('Failed to reject invoice:', error)
-      alert('拒绝失败')
+      toast.error((error as Error).message || '拒绝失败')
     }
   }
 

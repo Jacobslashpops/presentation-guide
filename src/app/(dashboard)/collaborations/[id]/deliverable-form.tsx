@@ -65,7 +65,7 @@ export function DeliverableForm({ collaborationId, deliverable }: DeliverableFor
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '添加交付物'}
         </Button>

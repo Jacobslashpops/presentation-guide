@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ClientForm } from './client-form'
+import Link from 'next/link'
 
 export default async function ClientsPage() {
   const supabase = await createClient()
@@ -33,7 +34,7 @@ export default async function ClientsPage() {
                 <TableHead>名称</TableHead>
                 <TableHead>描述</TableHead>
                 <TableHead>创建时间</TableHead>
-                <TableHead className="w-[100px]">操作</TableHead>
+                <TableHead className="w-[180px]">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -45,7 +46,12 @@ export default async function ClientsPage() {
                     {new Date(client.created_at).toLocaleDateString('zh-CN')}
                   </TableCell>
                   <TableCell>
-                    <ClientForm client={client} />
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" render={
+                        <Link href={`/clients/${client.id}`}>详情</Link>
+                      } />
+                      <ClientForm client={client} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

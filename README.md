@@ -23,8 +23,52 @@
 |------|------|
 | 前端 | Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui |
 | 后端 | Supabase (PostgreSQL + Auth + Storage + Edge Functions) |
+| 音频转写 | youtubei.js (InnerTube API) + OpenAI Whisper + ffmpeg |
+| 情绪分析 | DeepSeek API |
 | 支付验证 | Airwallex API |
-| 部署 | Vercel（前端）+ Supabase（后端） |
+| 部署 | VPS (Next.js + nginx) + Supabase (后端) |
+
+## 生产服务器
+
+| 项目 | 信息 |
+|------|------|
+| IP | 43.162.94.130 |
+| 位置 | 硅谷 (Silicon Valley) |
+| 配置 | 2C / 3.6GB RAM / 60GB SSD |
+| 系统 | Ubuntu 24.04 |
+| 用户 | ubuntu |
+| PEM 密钥 | ~/Desktop/Dev/server_key/tencentSF01.pem |
+| 应用目录 | /home/ubuntu/celepulse |
+| 进程管理 | PM2 |
+| Web 服务器 | Caddy (port 80/443 → localhost:3000, 自动 HTTPS) |
+| Node.js | v22.x |
+| 访问地址 | https://admin.celepulse.com |
+
+### 部署命令
+
+```bash
+# 同步代码到服务器
+rsync -avz -e "ssh -i ~/Desktop/Dev/server_key/tencentSF01.pem" \
+  --exclude=node_modules --exclude=.next --exclude=.git --exclude=supabase/.temp \
+  . ubuntu@43.162.94.130:/home/ubuntu/celepulse/
+
+# 在服务器上构建和重启
+ssh -i ~/Desktop/Dev/server_key/tencentSF01.pem ubuntu@43.162.94.130 \
+  "cd /home/ubuntu/celepulse && npm install && npm run build && pm2 restart celepulse"
+```
+
+### 服务器常用命令
+
+```bash
+# 查看应用状态
+ssh -i ~/Desktop/Dev/server_key/tencentSF01.pem ubuntu@43.162.94.130 "pm2 list"
+
+# 查看应用日志
+ssh -i ~/Desktop/Dev/server_key/tencentSF01.pem ubuntu@43.162.94.130 "pm2 logs celepulse"
+
+# 重启应用
+ssh -i ~/Desktop/Dev/server_key/tencentSF01.pem ubuntu@43.162.94.130 "pm2 restart celepulse"
+```
 
 ## 文档索引
 

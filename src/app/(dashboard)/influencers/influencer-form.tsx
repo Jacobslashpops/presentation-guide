@@ -6,13 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { createInfluencer, updateInfluencer, deleteInfluencer } from '@/lib/actions'
+import { toast } from 'sonner'
 
 interface InfluencerFormProps {
   influencer?: {
@@ -48,7 +42,7 @@ export function InfluencerForm({ influencer }: InfluencerFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to save influencer:', error)
-      alert('保存失败，请重试')
+      toast.error((error as Error).message || '保存失败，请重试')
     }
   }
 
@@ -60,13 +54,13 @@ export function InfluencerForm({ influencer }: InfluencerFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to delete influencer:', error)
-      alert('删除失败，请重试')
+      toast.error((error as Error).message || '删除失败，请重试')
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '新建红人'}
         </Button>
@@ -131,21 +125,6 @@ export function InfluencerForm({ influencer }: InfluencerFormProps) {
               rows={3}
             />
           </div>
-          {isEditing && (
-            <div className="space-y-2">
-              <Label htmlFor="status">状态</Label>
-              <Select name="status" defaultValue={influencer?.status || 'pending'}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">待激活</SelectItem>
-                  <SelectItem value="active">活跃</SelectItem>
-                  <SelectItem value="inactive">已停用</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="flex justify-between">
             {isEditing && (
               <Button type="button" variant="destructive" onClick={handleDelete}>

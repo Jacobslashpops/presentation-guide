@@ -100,10 +100,45 @@ export interface Database {
           bio: string | null
           timezone: string
           status: 'pending' | 'active' | 'inactive'
+          platform: string[] | null
+          followers_count: number | null
+          channel_urls: Record<string, string> | null
+          location: string | null
+          youtube_channel_id: string | null
+          channel_handle: string | null
+          channel_description: string | null
+          channel_banner_url: string | null
+          total_views: number | null
+          video_count: number | null
+          channel_created_at: string | null
+          website: string | null
+          twitter: string | null
+          facebook: string | null
+          linkedin: string | null
+          instagram: string | null
+          tiktok: string | null
+          twitch: string | null
           created_at: string
           updated_at: string
           created_by: string | null
           registered_at: string | null
+          last_collected_at: string | null
+        }
+      }
+      videos: {
+        Row: {
+          id: string
+          influencer_id: string
+          video_id: string
+          title: string
+          description: string | null
+          thumbnail_url: string | null
+          duration: string | null
+          view_count: string | null
+          published_at: string | null
+          video_url: string
+          created_at: string
+          updated_at: string
         }
       }
       collaborations: {
@@ -228,6 +263,206 @@ export interface Database {
           is_default: boolean
           created_at: string
           updated_at: string
+        }
+      }
+      posts: {
+        Row: {
+          id: string
+          influencer_id: string
+          platform: string
+          platform_post_id: string
+          url: string
+          title: string | null
+          description: string | null
+          thumbnail_url: string | null
+          published_at: string | null
+          duration: string | null
+          last_synced_at: string | null
+          comments_disabled: boolean
+          tags: string[]
+          hashtags: string[]
+          channel_title: string | null
+          language: string | null
+          category_id: number | null
+          transcription: string | null
+          transcription_source: string | null
+          transcription_status: string | null
+          transcription_language: string | null
+          transcription_error: string | null
+          transcription_quota_cost: number
+          video_sentiment: Record<string, unknown> | null
+          video_sentiment_status: string | null
+          comment_sentiment: Record<string, unknown> | null
+          comment_sentiment_status: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          influencer_id: string
+          platform: string
+          platform_post_id: string
+          url: string
+          title?: string | null
+          description?: string | null
+          thumbnail_url?: string | null
+          published_at?: string | null
+          duration?: string | null
+          last_synced_at?: string | null
+          comments_disabled?: boolean
+          tags?: string[]
+          hashtags?: string[]
+          channel_title?: string | null
+          language?: string | null
+          category_id?: number | null
+          transcription?: string | null
+          transcription_source?: string | null
+          transcription_status?: string | null
+          transcription_language?: string | null
+          transcription_error?: string | null
+          transcription_quota_cost?: number
+          video_sentiment?: Record<string, unknown> | null
+          video_sentiment_status?: string | null
+          comment_sentiment?: Record<string, unknown> | null
+          comment_sentiment_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          influencer_id?: string
+          platform?: string
+          platform_post_id?: string
+          url?: string
+          title?: string | null
+          description?: string | null
+          thumbnail_url?: string | null
+          published_at?: string | null
+          duration?: string | null
+          last_synced_at?: string | null
+          comments_disabled?: boolean
+          tags?: string[]
+          hashtags?: string[]
+          channel_title?: string | null
+          language?: string | null
+          category_id?: number | null
+          transcription?: string | null
+          transcription_source?: string | null
+          transcription_status?: string | null
+          transcription_language?: string | null
+          transcription_error?: string | null
+          transcription_quota_cost?: number
+          video_sentiment?: Record<string, unknown> | null
+          video_sentiment_status?: string | null
+          comment_sentiment?: Record<string, unknown> | null
+          comment_sentiment_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      post_snapshots: {
+        Row: {
+          id: string
+          post_id: string
+          view_count: number | null
+          like_count: number | null
+          comment_count: number | null
+          share_count: number | null
+          snapshot_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          view_count?: number | null
+          like_count?: number | null
+          comment_count?: number | null
+          share_count?: number | null
+          snapshot_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          view_count?: number | null
+          like_count?: number | null
+          comment_count?: number | null
+          share_count?: number | null
+          snapshot_at?: string
+        }
+      }
+      post_comments: {
+        Row: {
+          id: string
+          post_id: string
+          platform_comment_id: string
+          author_name: string | null
+          author_avatar_url: string | null
+          author_channel_url: string | null
+          text: string
+          like_count: number
+          published_at: string | null
+          updated_at: string | null
+          is_reply: boolean
+          parent_comment_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          platform_comment_id: string
+          author_name?: string | null
+          author_avatar_url?: string | null
+          author_channel_url?: string | null
+          text: string
+          like_count?: number
+          published_at?: string | null
+          updated_at?: string | null
+          is_reply?: boolean
+          parent_comment_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          platform_comment_id?: string
+          author_name?: string | null
+          author_avatar_url?: string | null
+          author_channel_url?: string | null
+          text?: string
+          like_count?: number
+          published_at?: string | null
+          updated_at?: string | null
+          is_reply?: boolean
+          parent_comment_id?: string | null
+          created_at?: string
+        }
+      }
+      transcription_usage: {
+        Row: {
+          id: string
+          user_id: string
+          year_month: string
+          used_seconds: number
+          quota_seconds: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          year_month: string
+          used_seconds?: number
+          quota_seconds?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          year_month?: string
+          used_seconds?: number
+          quota_seconds?: number
+          created_at?: string
+          updated_at?: string
         }
       }
     }

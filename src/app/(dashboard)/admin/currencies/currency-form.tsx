@@ -59,7 +59,7 @@ export function CurrencyForm({ currency }: CurrencyFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '新建币种'}
         </Button>

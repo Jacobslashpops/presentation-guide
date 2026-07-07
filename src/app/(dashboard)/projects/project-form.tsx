@@ -21,6 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { createProject, updateProject, deleteProject } from '@/lib/actions'
+import { toast } from 'sonner'
 
 interface ProjectFormProps {
   project?: {
@@ -52,7 +53,7 @@ export function ProjectForm({ project, clients, currencies }: ProjectFormProps) 
       setOpen(false)
     } catch (error) {
       console.error('Failed to save project:', error)
-      alert('保存失败，请重试')
+      toast.error((error as Error).message || '保存失败，请重试')
     }
   }
 
@@ -64,13 +65,13 @@ export function ProjectForm({ project, clients, currencies }: ProjectFormProps) 
       setOpen(false)
     } catch (error) {
       console.error('Failed to delete project:', error)
-      alert('删除失败，请重试')
+      toast.error((error as Error).message || '删除失败，请重试')
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '新建项目'}
         </Button>

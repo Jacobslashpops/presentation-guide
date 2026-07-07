@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { createCompany, updateCompany, deleteCompany } from '@/lib/actions'
+import { toast } from 'sonner'
 
 interface CompanyFormProps {
   company?: {
@@ -40,7 +41,7 @@ export function CompanyForm({ company }: CompanyFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to save company:', error)
-      alert('保存失败：' + (error as Error).message)
+      toast.error((error as Error).message || '保存失败，请重试')
     }
   }
 
@@ -52,13 +53,13 @@ export function CompanyForm({ company }: CompanyFormProps) {
       setOpen(false)
     } catch (error) {
       console.error('Failed to delete company:', error)
-      alert('删除失败')
+      toast.error((error as Error).message || '删除失败，请重试')
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant={isEditing ? 'ghost' : 'default'} size={isEditing ? 'sm' : 'default'}>
           {isEditing ? '编辑' : '新建付款方'}
         </Button>
