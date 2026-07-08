@@ -643,6 +643,13 @@ async function collectAndSend(channelUrlOverride) {
     // Wait for page to fully render
     await new Promise(resolve => setTimeout(resolve, 2500))
 
+    // Re-verify we're still on the same channel page after waiting
+    const currentUrl = getChannelBaseUrl()
+    if (!currentUrl || currentUrl !== channelBaseUrl) {
+      console.log(`[CelePulse] Page navigated during wait. Was: ${channelBaseUrl}, now: ${currentUrl}. Skipping.`)
+      return
+    }
+
     // Extract data from current page
     console.log('[CelePulse] Looking for ytInitialData...')
     const ytData = findYtInitialData()
@@ -653,6 +660,17 @@ async function collectAndSend(channelUrlOverride) {
     console.log('[CelePulse] Found ytInitialData, extracting channel data...')
 
     const channelData = extractChannelData(ytData)
+
+    // SPA navigation guard: verify ytInitialData matches current URL
+    const canonicalUrl = ytData?.metadata?.channelMetadataRenderer?.vanityChannelUrl
+    if (canonicalUrl) {
+      const currentHandle = channelBaseUrl.match(/@([\w.-]+)/)?.[1]?.toLowerCase()
+      const dataHandle = canonicalUrl.match(/@([\w.-]+)/)?.[1]?.toLowerCase()
+      if (currentHandle && dataHandle && currentHandle !== dataHandle) {
+        console.log(`[CelePulse] SPA mismatch detected: URL=@${currentHandle}, data=@${dataHandle}. Skipping.`)
+        return
+      }
+    }
 
     // Fetch /videos page for actual video list (main page only has Home tab)
     console.log('[CelePulse] Fetching videos page...')

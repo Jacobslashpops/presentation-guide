@@ -88,6 +88,14 @@ export function SentimentReport({
         )}
       </div>
 
+      {/* Video Sentiment - waiting for transcription to finish */}
+      {videoSentimentStatus === 'pending' && (
+        <div className="flex items-center gap-2 py-6 text-muted-foreground justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">等待转写完成后启动情绪分析...</span>
+        </div>
+      )}
+
       {/* Video Sentiment - Creator Analysis */}
       {videoSentimentStatus === 'processing' && (
         <div className="flex items-center gap-2 py-6 text-muted-foreground justify-center">

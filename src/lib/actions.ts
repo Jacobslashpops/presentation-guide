@@ -770,6 +770,109 @@ export async function createInfluencerFromYouTube(raw: {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // --- Dedup: find existing influencer before inserting ---
+  const youtubeUrl = raw.channel_urls?.YouTube
+  let existingId: string | null = null
+
+  if (youtubeUrl) {
+    // Extract handle from URL (e.g. @cycling366 -> cycling366)
+    const handleMatch = youtubeUrl.match(/@([\w.-]+)/)
+    const handle = handleMatch?.[1]
+
+    if (handle) {
+      // Priority 1: Match by channel_handle (case-insensitive)
+      const { data: handleMatch1 } = await supabase
+        .from('influencers')
+        .select('id')
+        .ilike('channel_handle', handle)
+        .limit(1)
+        .maybeSingle()
+      if (handleMatch1) existingId = handleMatch1.id
+    }
+
+    // Priority 2: Match by channel_urls JSONB (ilike on the last segment)
+    if (!existingId && youtubeUrl) {
+      const lastSegment = youtubeUrl.replace(/\/$/, '').split('/').pop()
+      if (lastSegment) {
+        const { data: urlMatch } = await supabase
+          .from('influencers')
+          .select('id')
+          .or(`channel_urls->>YouTube.ilike.%${lastSegment}%`)
+          .limit(1)
+          .maybeSingle()
+        if (urlMatch) existingId = urlMatch.id
+      }
+    }
+
+    // Priority 3: Match by email
+    if (!existingId && raw.email) {
+      const { data: emailMatch } = await supabase
+        .from('influencers')
+        .select('id')
+        .eq('email', raw.email)
+        .limit(1)
+        .maybeSingle()
+      if (emailMatch) existingId = emailMatch.id
+    }
+  }
+
+  // --- Update existing influencer (fill null fields only) ---
+  if (existingId) {
+    const { data: existing } = await supabase
+      .from('influencers')
+      .select('*')
+      .eq('id', existingId)
+      .single()
+
+    if (existing) {
+      const updates: Record<string, unknown> = {}
+      if (!existing.avatar_url && raw.avatar_url) updates.avatar_url = raw.avatar_url
+      if (!existing.bio && raw.bio) updates.bio = raw.bio
+      if (!existing.followers_count && raw.followers_count) updates.followers_count = raw.followers_count
+      if (!existing.email && raw.email) updates.email = raw.email
+      if (!existing.location && raw.location) updates.location = raw.location
+
+      // Merge channel_urls
+      const existingUrls = (existing.channel_urls as Record<string, string>) || {}
+      const mergedUrls = { ...raw.channel_urls, ...existingUrls }
+      if (JSON.stringify(mergedUrls) !== JSON.stringify(existingUrls)) {
+        updates.channel_urls = mergedUrls
+      }
+
+      // Merge platform array
+      const existingPlatforms: string[] = existing.platform || []
+      const newPlatforms = [...new Set([...existingPlatforms, ...(raw.platform || [])])]
+      if (newPlatforms.length !== existingPlatforms.length) {
+        updates.platform = newPlatforms
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const { error: updateErr } = await supabase.from('influencers').update(updates).eq('id', existingId)
+        if (updateErr) throw updateErr
+      }
+    }
+
+    // Upsert videos
+    if (raw.videos.length > 0) {
+      const videoRows = raw.videos.map((v) => ({
+        influencer_id: existingId,
+        video_id: v.video_id,
+        title: v.title,
+        thumbnail_url: v.thumbnail_url,
+        duration: v.duration,
+        view_count: v.view_count,
+        published_at: v.published_at,
+        video_url: v.video_url,
+      }))
+      await supabase.from('videos').upsert(videoRows, { onConflict: 'influencer_id,video_id' })
+    }
+
+    revalidatePath('/influencers')
+    revalidatePath(`/influencers/${existingId}`)
+    return { id: existingId }
+  }
+
+  // --- Create new influencer (no existing match found) ---
   const insertData: Record<string, unknown> = {
     display_name: raw.display_name,
     avatar_url: raw.avatar_url,
@@ -785,6 +888,12 @@ export async function createInfluencerFromYouTube(raw: {
 
   if (raw.email) {
     insertData.email = raw.email
+  }
+
+  // Extract channel_handle from YouTube URL
+  const handleMatch = youtubeUrl?.match(/@([\w.-]+)/)
+  if (handleMatch) {
+    insertData.channel_handle = handleMatch[1]
   }
 
   const { data: influencer, error } = await supabase

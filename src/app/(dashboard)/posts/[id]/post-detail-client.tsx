@@ -158,10 +158,15 @@ export function PostDetailClient({
           setCSentiment(data.comment_sentiment)
         }
 
-        // Check if everything is done
-        const txDone = data.transcription_status !== 'processing'
-        const sentDone = data.video_sentiment_status !== 'processing'
-        if (txDone && sentDone) {
+        // Check if everything reached a terminal state.
+        // Sentiment starts as 'pending' and only moves to 'processing' after transcription
+        // completes, so we must wait for 'completed' or 'failed' — not just 'not processing'.
+        const TERMINAL = ['completed', 'failed', 'pending', null]
+        const txTerminal = TERMINAL.includes(data.transcription_status)
+        const sentTerminal = TERMINAL.includes(data.video_sentiment_status)
+        // Only stop when BOTH are terminal AND neither is actively processing
+        const anyActive = data.transcription_status === 'processing' || data.video_sentiment_status === 'processing'
+        if (txTerminal && sentTerminal && !anyActive) {
           // Stop polling
           if (pollRef.current) {
             clearInterval(pollRef.current)
